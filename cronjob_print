@@ -1,0 +1,21 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: print-pod
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: test
+          containers:
+          - name: print-pod
+            image: bitnami/kubectl:latest
+            command:
+            - kubectl
+            args:
+            - delete
+            - pod
+            - user1
+          restartPolicy: OnFailure
