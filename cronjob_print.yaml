@@ -12,10 +12,9 @@ spec:
           containers:
           - name: print-pod
             image: bitnami/kubectl:latest
-            command:
-            - kubectl
+            command: ["/bin/bash","-c"]
             args:
-            - delete
-            - pod
-            - user1
+                - POD_NAME=$(kubectl get pods -o=jsonpath='{range .items[?(@.status.containerStatuses[*].state.waiting.reason=="ImagePullBackOff")]}{.metadata.name}{"\n"}{end}');
+                  kubectl delete pod $POD_NAME;
+
           restartPolicy: OnFailure
