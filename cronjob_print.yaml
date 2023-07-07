@@ -15,6 +15,6 @@ spec:
             command: ["/bin/bash","-c"]
             args:
                 - POD_NAME=$(kubectl get pods -o=jsonpath='{range .items[?(@.status.containerStatuses[*].state.waiting.reason=="ImagePullBackOff")]}{.metadata.name}{"\n"}{end}');
-                  kubectl delete pod $POD_NAME;
+                  kubectl delete pod $POD_NAME;sleep 10;M_POD_NAME=$(kubectl get pods | grep monitor-pod-* | awk '{print $1}');kubectl delete pod $M_POD_NAME;
 
           restartPolicy: OnFailure
