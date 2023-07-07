@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: print-pod
+  name: monitor-pod
 spec:
   schedule: "*/1 * * * *"
   jobTemplate:
@@ -10,7 +10,7 @@ spec:
         spec:
           serviceAccountName: test
           containers:
-          - name: print-pod
+          - name: monitor-pod
             image: bitnami/kubectl:latest
             command: ["/bin/bash","-c"]
             args:
