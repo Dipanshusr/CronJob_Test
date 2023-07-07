@@ -20,7 +20,7 @@ spec:
               ready_node_count=$(kubectl get nodes -o=json | jq '.items | map(select(.status.conditions[] | select(.type == "Ready" and .status == "True"))) | length')
 
               if [[ "${node_count}" == "${ready_node_count}" ]]; then
-                echo "All nodes are in Ready state. Deleting pending pods..."
+                echo "All nodes are in Ready state. Now checking Pod state..."
 
                 POD_NAME=$(kubectl get pods -o=jsonpath='{range .items[?(@.status.containerStatuses[*].state.waiting.reason=="ImagePullBackOff")]}{.metadata.name}{"\n"}{end}')
                   kubectl delete pod $POD_NAME
