@@ -14,7 +14,20 @@ spec:
             image: bitnami/kubectl:latest
             command: ["/bin/bash","-c"]
             args:
-                - POD_NAME=$(kubectl get pods -o=jsonpath='{range .items[?(@.status.containerStatuses[*].state.waiting.reason=="ImagePullBackOff")]}{.metadata.name}{"\n"}{end}');
-                  kubectl delete pod $POD_NAME;sleep 10;M_POD_NAME=$(kubectl get pods | grep monitor-pod-* | awk '{print $1}');kubectl delete pod $M_POD_NAME;
+            - |
+              #!/bin/bash
+              node_count=$(kubectl get nodes --no-headers | wc -l)
+              ready_node_count=$(kubectl get nodes -o=json | jq '.items | map(select(.status.conditions[] | select(.type == "Ready" and .status == "True"))) | length')
 
+              if [[ "${node_count}" == "${ready_node_count}" ]]; then
+                echo "All nodes are in Ready state. Deleting pending pods..."
+
+                POD_NAME=$(kubectl get pods -o=jsonpath='{range .items[?(@.status.containerStatuses[*].state.waiting.reason=="ImagePullBackOff")]}{.metadata.name}{"\n"}{end}')
+                  kubectl delete pod $POD_NAME
+              else
+                echo "Not all nodes are in Ready state. sleeping for 2 min"
+                sleep 2
+                echo "Sleep over"
+          
+              fi
           restartPolicy: OnFailure
