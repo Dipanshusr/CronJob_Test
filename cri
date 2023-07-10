@@ -1,0 +1,17 @@
+#!/bin/bash
+retry_node=3
+retry_pod=3
+while [[$retry_node -gt 0]];do
+    node_count=$(kubectl get nodes --no-headers | wc -l)
+    ready_node_count=$(kubectl get nodes -o=json | jq '.items | map(select(.status.conditions[] | select(.type == "Ready" and .status == "True"))) | length')
+    if [[ "${node_count}" == "${ready_node_count}" ]]; then
+        echo "All nodes are in Ready state. Now Checking pod states..."
+        break
+    else
+        echo "Not all nodes are in Ready state,Sleeping for 1 min and then retrying.."
+        sleep 60
+        echo "Sleep over"
+        retry_node=$((retry_node-1))
+    fi
+done
+echo "outside loop"
