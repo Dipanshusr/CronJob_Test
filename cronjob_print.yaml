@@ -16,24 +16,34 @@ spec:
             args:
             - |
               #!/bin/bash
-              node_count=$(kubectl get nodes --no-headers | wc -l)
-              ready_node_count=$(kubectl get nodes -o=json | jq '.items | map(select(.status.conditions[] | select(.type == "Ready" and .status == "True"))) | length')
-
-              if [[ "${node_count}" == "${ready_node_count}" ]]; then
-                echo "All nodes are in Ready state. Now Checking pod states..."
-
-                POD_NAME=$(kubectl get pods -o=jsonpath='{range .items[?(@.status.containerStatuses[*].state.waiting.reason=="ImagePullBackOff")]}{.metadata.name}{"\n"}{end}')
-
-                if [[ -z "${POD_NAME}" ]]; then
-                  echo "No pods are in the ImagePullBackOff state. Nothing to delete."
-                else
-                  echo "Deleting pods in the ImagePullBackOff state..."
-                  kubectl delete pod $POD_NAME
-                fi  
-              else
-                echo "Not all nodes are in Ready state. sleeping for 2 min"
-                sleep 120
-                echo "Sleep over"
-          
-              fi
+                retry_node=3
+                retry_pod=3
+                while [[ $retry_node -gt 0 ]];do
+                    node_count=$(kubectl get nodes --no-headers | wc -l)
+                    ready_node_count=$(kubectl get nodes -o=json | jq '.items | map(select(.status.conditions[] | select(.type == "Ready" and .status == "True"))) | length')
+                    if [[ "${node_count}" == "${ready_node_count}" ]]; then
+                        echo "All nodes are in Ready state. Now Checking pod states..."
+                        break
+                    else
+                        echo "Not all nodes are in Ready state,Sleeping for 1 min and then retrying.."
+                        sleep 60
+                        retry_node=$((retry_node-1))
+                        echo "Retry Value: $retry_node"
+                        
+                    fi
+                done
+                while [[ $retry_pod -gt 0 ]];do
+                    POD_NAME=$(kubectl get pods -o=jsonpath='{range .items[?(@.status.containerStatuses[*].state.waiting.reason=="ImagePullBackOff")]}{.metadata.name}{"\n"}{end}')
+                    if [[ -z "${POD_NAME}" ]]; then
+                        echo "No pods are in the ImagePullBackOff state. Nothing to delete."
+                        break
+                    else
+                        echo "Deleting pods in the ImagePullBackOff state..."
+                        kubectl delete pod $POD_NAME
+                        sleep 30
+                        retry_pod=$((retry_pod-1))
+                        echo "Retry Value: $retry_pod"
+                        
+                    fi
+                done
           restartPolicy: OnFailure
