@@ -43,7 +43,7 @@ spec:
                             else
                                 echo "Deleting pods in the ImagePullBackOff state..."
                                 kubectl delete pod $POD_NAME
-                                sleep 30
+                                sleep 60
                                 retry_pod=$((retry_pod-1))
                                 echo "Retry Value: $retry_pod"
                             fi
