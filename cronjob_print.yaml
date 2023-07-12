@@ -38,7 +38,7 @@ spec:
                     while [[ $retry_pod -gt 0 ]];do
                             POD_NAME=$(kubectl get pods -o=jsonpath='{range .items[?(@.status.containerStatuses[*].state.waiting.reason=="ImagePullBackOff")]}{.metadata.name}{"\n"}{end}')
                             if [[ -z "${POD_NAME}" ]]; then
-                                echo "No pods are in the ImagePullBackOff state. Nothing to delete."
+                                echo "No pods are in ImagePullBackOff state. Nothing to delete."
                                 break
                             else
                                 echo "Deleting pods in the ImagePullBackOff state..."
@@ -47,6 +47,9 @@ spec:
                                 retry_pod=$((retry_pod-1))
                                 echo "Retry Value: $retry_pod"
                             fi
-                        done
+                    done
+                    if [[ $retry_pod -eq 0 ]]; then
+                      echo "Some pods are still in ImagePullBackOff state even after waiting for 3 mins, Please debug the pods failure...."
+                    fi  
                 fi    
           restartPolicy: OnFailure
