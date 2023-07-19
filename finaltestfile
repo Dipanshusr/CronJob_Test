@@ -20,4 +20,46 @@ spec:
                 retry_pod=3
                 while [[ $retry_node -gt 0 ]];do
                     node_count=$(kubectl get nodes --no-headers | wc -l)
-                    ready_node_coun
+                    ready_node_count=$(kubectl get nodes -o=json | jq '.items | map(select(.status.conditions[] | select(.type == "Ready" and .status == "True"))) | length')
+                    node_diff=$(($node_count - $ready_node_count))
+                    if [[ "${node_count}" == "${ready_node_count}" ]]; then
+                        echo "All nodes are in Ready state. Now Checking pod states..."
+                        break
+                    else
+                        echo "Not all nodes are in Ready state,Sleeping for 1 min and then retrying..."
+                        sleep 60
+                        retry_node=$((retry_node-1))
+                        echo "Retry Value: $retry_node"
+                        
+                    fi
+                done
+                if [[ $retry_node -eq 0 && $node_diff -ge 3 ]]; then
+                    echo "Nodes are still not up even after waiting for 3 mins, Please debug the nodes failure...."
+                else
+                    while [[ $retry_pod -gt 0 ]];do
+                            POD_NAME=$(kubectl get pods -o=jsonpath='{range .items[?(@.status.containerStatuses[*].state.waiting.reason=="ImagePullBackOff")]}{.metadata.name}{"\n"}{end}')
+                            if [[ -z "${POD_NAME}" ]]; then
+                                echo "No pods are in ImagePullBackOff state. Nothing to delete."
+                                break
+                            else
+                                echo "Deleting pods in the ImagePullBackOff state..."
+                                kubectl delete pod $POD_NAME
+                                sleep 10
+                                retry_pod=$((retry_pod-1))
+                            fi
+                    done
+                    if [[ $retry_pod -eq 0 ]]; then
+                      echo "Some pods are still in ImagePullBackOff state even after waiting for 3 mins, Please debug the pods failure...."
+                    fi  
+                fi
+                echo "Now Sleeping for 15min and then deleting notebooks-api,notebooks-worker,notebooks-beat,mosaic-version-control Pods"
+                sleep 60
+                NOTEBOOK_POD_NAME=$(kubectl get pods -n refract-dev| egrep 'notebooks-api|notebooks-worker|notebooks-beat|mosaic-version-control' | awk {'print $1'} )
+                if [[ -z "${NOTEBOOK_POD_NAME}" ]]; then
+                  echo "No resources found in refract-dev namespace, Nothing to delete."
+                else
+                  echo "Deleting pods..."
+                  kubectl delete pod $NOTEBOOK_POD_NAME -n refract-dev
+                fi
+                echo "Job Completed..."
+          restartPolicy: OnFailure
